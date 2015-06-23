@@ -15,9 +15,13 @@ from io import StringIO
 import os
 import os.path
 import yaml
+import pytz
+from dateutil import rrule
+import collections
 
 
-from yaml2ical.recurrence import supported_recurrences
+
+#from yaml2ical.recurrence import supported_recurrences
 
 DATES = {
     'Monday': datetime.datetime(1900, 1, 1).date(),
@@ -29,6 +33,8 @@ DATES = {
     'Sunday': datetime.datetime(1900, 1, 7).date(),
 }
 ONE_WEEK = datetime.timedelta(weeks=1)
+WEEKDAYS = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+            'Friday': 4, 'Saturday': 5, 'Sunday': 6}
 
 
 class Schedule(object):
@@ -39,7 +45,7 @@ class Schedule(object):
 
         self.project = meeting.project
         self.filefrom = meeting.filefrom
-        # mandatory: time, day, irc, freq, recurrence
+        # mandatory: time, day, irc, freq
         try:
             self.utc = sched_yaml['time']
             self.time = datetime.datetime.strptime(sched_yaml['time'], '%H%M')
@@ -47,7 +53,7 @@ class Schedule(object):
             self.day = sched_yaml['day'].lower().capitalize()
             self.irc = sched_yaml['irc']
             self.freq = sched_yaml['frequency']
-            self.recurrence = supported_recurrences[sched_yaml['frequency']]
+            self.freq_interval = supported_frequencies[sched_yaml['frequency']]
         except KeyError as e:
             print("Invalid YAML meeting schedule definition - missing "
                   "attribute '{0}'".format(e.args[0]))
@@ -97,6 +103,26 @@ class Schedule(object):
                  (other.meeting_start < self.meeting_end)) and
                 (set([self.freq, other.freq]) != alternating))
 
+    def next_occurrence(self):
+        """Return the datetime of the next meeting.
+
+        :returns: datetime object of the next meeting time
+        """
+
+        weekday = WEEKDAYS[self.day]
+        days_ahead = weekday - self.start_date.weekday()
+        if days_ahead < 0:  # target day already happened this week
+            days_ahead += 7
+        next_meeting =  self.start_date + datetime.timedelta(days_ahead)
+        return datetime.datetime(next_meeting.year,
+                                 next_meeting.month,
+                                 next_meeting.day,
+                                 self.time.hour,
+                                 self.time.minute,
+                                 tzinfo=pytz.utc)
+
+    def recurrence_rule(self):
+        return {'freq': 'weekly', 'interval': self.freq_interval}
 
 class Meeting(object):
     """An online meeting."""
@@ -182,6 +208,13 @@ def load_meetings(yaml_source):
 class MeetingConflictError(Exception):
     pass
 
+class MeetingInstance(object):
+    """A meeting instance."""
+
+    def __init__(self, project, start, duration):
+        self.project = project
+        self.start = start
+        self.end = start + datetime.timedelta(minutes=duration)
 
 def check_for_meeting_conflicts(meetings):
     """Check if a list of meetings have conflicts.
@@ -189,15 +222,34 @@ def check_for_meeting_conflicts(meetings):
     :param meetings: list of Meeting objects
 
     """
+    # Get all recurrences for the next year
+    start = datetime.datetime.now(pytz.utc)
+    end = start + datetime.timedelta(days=365)
 
+    allinstances = collections.defaultdict(list)
     for i in range(len(meetings)):
-        schedules = meetings[i].schedules
-        for j in range(i + 1, len(meetings)):
-            other_schedules = meetings[j].schedules
-            for schedule in schedules:
-                for other_schedule in other_schedules:
-                    if schedule.conflicts(other_schedule):
-                        msg_dict = {'one': schedule.filefrom,
-                                    'two': other_schedule.filefrom}
-                        raise MeetingConflictError(
-                            "Conflict between %(one)s and %(two)s" % msg_dict)
+        for schedule in meetings[i].schedules:
+            rr = rrule.rrule(rrule.WEEKLY,
+                     dtstart = schedule.next_occurrence(),
+                     interval = schedule.freq_interval)
+            occurrences = rr.between(start, end, inc=True)
+            for occurrence_start in occurrences:
+               allinstances[schedule.irc].append(MeetingInstance(meetings[i].project,
+                                                 occurrence_start,
+                                                 schedule.duration))
+
+    for irc_channel in allinstances:
+        for i in range(len(allinstances[irc_channel])):
+            for j in range(i+1, len(allinstances[irc_channel])):
+                # This conflict check allows meetings to share exact start/stop times
+                # i.e. 11-11:30 and 11:30-12 do not conflict
+                if ((allinstances[irc_channel][i].start < allinstances[irc_channel][j].end) and
+                   (allinstances[irc_channel][i].end > allinstances[irc_channel][j].start)):
+                    error = "Conflict: %s and %s" % (allinstances[irc_channel][i].project,
+                                                     allinstances[irc_channel][j].project)
+                    raise MeetingConflictError(error)
+
+supported_frequencies = {
+    'weekly': 1,
+    'biweekly': 2,
+}

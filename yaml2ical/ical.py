@@ -63,8 +63,9 @@ class Yaml2IcalCalendar(icalendar.Calendar):
             event.add('description', ical_descript)
 
             # get starting date
-            next_meeting = sch.recurrence.next_occurence(sch.start_date,
-                                                         sch.day)
+            start_date = sch.start_date
+            #next_meeting = sch.recurrence.next_occurrence(start_date, sch.day)
+            next_meeting = sch.next_occurrence()
             next_meeting_date = datetime.datetime(next_meeting.year,
                                                   next_meeting.month,
                                                   next_meeting.day,
@@ -74,7 +75,7 @@ class Yaml2IcalCalendar(icalendar.Calendar):
             event.add('dtstart', next_meeting_date)
 
             # add recurrence rule
-            event.add('rrule', sch.recurrence.rrule())
+            event.add('rrule', sch.recurrence_rule())
 
             event.add('duration', datetime.timedelta(minutes=sch.duration))
 

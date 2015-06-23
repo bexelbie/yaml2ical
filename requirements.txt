@@ -3,3 +3,4 @@ argparse
 icalendar
 jinja2
 pyyaml
+python-dateutil

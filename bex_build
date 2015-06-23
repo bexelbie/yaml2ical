@@ -1,0 +1,14 @@
+yum -y install git python3
+pip3 install -r requirements.txt
+pip3 install testrepository
+python3 setup.py install;yaml2ical -y meetings -f -o cal.ics
+sudo docker run -v /home/bexelbie/Documents/Repositories/yaml2ical:/workdir --privileged -i --name=y2idev -t fedora /bin/bash
+
+Future notes:
+
+- get rid of recurrence class and test_recurrence
+- make biweekly-odd and biweekly-even work and fix biweekly tests in test_meeting
+- add monthly and yearly
+- add interval for custom things like every other month
+- make sure that non-repeating events work
+- add an end_date

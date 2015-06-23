@@ -22,7 +22,7 @@ class WeeklyRecurrence(object):
     def __init__(self):
         pass
 
-    def next_occurence(self, current_date_time, day):
+    def next_occurrence(self, start_date_time, day):
         """Return the date of the next meeting.
 
         :param ref_date: datetime object of meeting
@@ -32,13 +32,13 @@ class WeeklyRecurrence(object):
         """
 
         weekday = WEEKDAYS[day]
-        days_ahead = weekday - current_date_time.weekday()
+        days_ahead = weekday - start_date_time.weekday()
         if days_ahead < 0:  # target day already happened this week
             days_ahead += 7
-        return current_date_time + datetime.timedelta(days_ahead)
+        return start_date_time + datetime.timedelta(days_ahead)
 
-    def rrule(self):
-        return {'freq': 'weekly'}
+    def rrule(self, next_date):
+        return {'freq': 'weekly', 'dtstart': next_date}
 
     def __str__(self):
         return "Weekly"
@@ -47,32 +47,33 @@ class WeeklyRecurrence(object):
 class BiWeeklyRecurrence(object):
     """Meetings occuring on alternate weeks.
 
-    Can be either on odd weeks or on even weeks
-    """
-    def __init__(self, style='even'):
-        self.style = style
+#    Can be either on odd weeks or on even weeks
+#    """
+#    def __init__(self, style='even'):
+#        self.style = style
 
-    def next_occurence(self, current_date, day):
+    def next_occurrence(self, start_date, day):
         """Calculate the next biweekly meeting.
 
-        :param current_date: the current date
+        :param start_date: the current date
         :param day: scheduled day of the meeting
         :returns: datetime object of next meeting
         """
-        nextweek_day = WeeklyRecurrence().next_occurence(current_date, day)
-        if nextweek_day.isocalendar()[1] % 2:
-            ## ISO week is odd
-            if self.style == 'odd':
-                return nextweek_day
-        else:
-            ## ISO week is even
-            if self.style == 'even':
-                return nextweek_day
+        return WeeklyRecurrence().next_occurrence(start_date, day)
+        #nextweek_day = WeeklyRecurrence().next_occurrence(start_date, day)
+        #if nextweek_day.isocalendar()[1] % 2:
+        #    ## ISO week is odd
+        #    if self.style == 'odd':
+        #        return nextweek_day
+        #else:
+        #    ## ISO week is even
+        #    if self.style == 'even':
+        #        return nextweek_day
         # If week doesn't match rule, skip one week
-        return nextweek_day + datetime.timedelta(7)
+        #return nextweek_day + datetime.timedelta(7)
 
-    def rrule(self):
-        return {'freq': 'weekly', 'interval': 2}
+    def rrule(self, next_date):
+        return {'freq': 'weekly', 'interval': 2, 'dtstart': next_date}
 
     def __str__(self):
         return "Every two weeks (on %s weeks)" % self.style
@@ -80,6 +81,7 @@ class BiWeeklyRecurrence(object):
 
 supported_recurrences = {
     'weekly': WeeklyRecurrence(),
-    'biweekly-odd': BiWeeklyRecurrence(style='odd'),
-    'biweekly-even': BiWeeklyRecurrence(),
+    'biweekly': BiWeeklyRecurrence(),
+#    'biweekly-odd': BiWeeklyRecurrence(style='odd'),
+#    'biweekly-even': BiWeeklyRecurrence(),
 }

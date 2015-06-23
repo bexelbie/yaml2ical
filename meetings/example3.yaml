@@ -1,0 +1,10 @@
+project: Example3 Meeting
+schedule:
+  - time: '0000'
+    day: Friday
+    start_date: 20150922
+    irc: openstack-meeting
+    frequency: weekly
+chair: John Doe
+description:  >
+  If you're interested in Example, we have a weekly meeting for you to attend.

@@ -46,6 +46,11 @@ class MeetingTestCase(unittest.TestCase):
         meeting_list = [meeting_one.pop(), meeting_two.pop()]
         meeting.check_for_meeting_conflicts(meeting_list)
 
+    def test_weekly_conflict_startdate(self):
+        self.should_be_conflicting(
+            sample_data.MEETING_WITH_START_DATE,
+            sample_data.CONFLICTING_WEEKLY_MEETING)
+
     def test_weekly_conflict(self):
         self.should_be_conflicting(
             sample_data.WEEKLY_MEETING,
@@ -89,3 +94,21 @@ class MeetingTestCase(unittest.TestCase):
         self.should_not_conflict(
             sample_data.CONFLICTING_WEEKLY_MEETING,
             sample_data.MEETING_WITH_DURATION)
+
+    def test_next_weekly(self):
+        m = Meeting
+        m.start_date = datetime.datetime(2014, 10, 5, 2, 47, 28, 832666)
+        m.day = 'Wednesday'
+        self.assertEqual(
+            datetime.datetime(2014, 10, 8, 2, 47, 28, 832666),
+            m.next_occurrence())
+
+#    def test_next_biweekly_odd(self):
+#        self.assertEqual(
+#            datetime.datetime(2014, 10, 8, 2, 47, 28, 832666),
+#            self.next_meeting(recurrence.BiWeeklyRecurrence(style='odd')))
+#
+#    def test_next_biweekly_even(self):
+#        self.assertEqual(
+#            datetime.datetime(2014, 10, 15, 2, 47, 28, 832666),
+#            self.next_meeting(recurrence.BiWeeklyRecurrence(style='even')))
