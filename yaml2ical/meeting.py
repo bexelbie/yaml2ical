@@ -11,13 +11,12 @@
 # under the License.
 
 import datetime
+import dateutil.relativedelta
 from io import StringIO
 import os
 import os.path
 import yaml
 
-
-from yaml2ical.recurrence import supported_recurrences
 
 DATES = {
     'Monday': datetime.datetime(1900, 1, 1).date(),
@@ -29,6 +28,9 @@ DATES = {
     'Sunday': datetime.datetime(1900, 1, 7).date(),
 }
 ONE_WEEK = datetime.timedelta(weeks=1)
+supported_recurrences = ['weekly', 'biweekly-odd', 'biweekly-even']
+WEEKDAYS = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+            'Friday': 4, 'Saturday': 5, 'Sunday': 6}
 
 
 class Schedule(object):
@@ -46,8 +48,7 @@ class Schedule(object):
             # Sanitize the Day
             self.day = sched_yaml['day'].lower().capitalize()
             self.irc = sched_yaml['irc']
-            self.freq = sched_yaml['frequency']
-            self.recurrence = supported_recurrences[sched_yaml['frequency']]
+            self.freq = sched_yaml['frequency'].lower()
         except KeyError as e:
             print("Invalid YAML meeting schedule definition - missing "
                   "attribute '{0}'".format(e.args[0]))
@@ -74,6 +75,11 @@ class Schedule(object):
         else:
             self.duration = 60
 
+        # Validate the frequency
+        if self.freq not in supported_recurrences:
+            raise ValueError("Invalid frequency: %s in %s" %
+                             (self.freq, self.filefrom))
+
         if self.day not in DATES.keys():
             raise ValueError("'%s' is not a valid day of the week")
 
@@ -96,6 +102,42 @@ class Schedule(object):
                 ((self.meeting_start < other.meeting_end) and
                  (other.meeting_start < self.meeting_end)) and
                 (set([self.freq, other.freq]) != alternating))
+
+    def next_occurrence(self):
+        # Returns the datetime of the next occurence
+        if self.freq == "weekly":
+            # next occurrence is just the next occurrence of self.day
+            return (datetime.datetime.utcnow() +
+                    dateutil.relativedelta.relativedelta(
+                        weekday=WEEKDAYS[self.day], hour=self.time.hour,
+                        minute=self.time.minute, second=0, microsecond=0))
+        elif self.freq == "biweekly-even" or self.freq == "biweekly-odd":
+            # next occurrence is just the next occurrence of self.day in
+            # an even/odd week
+            next_date = (datetime.datetime.utcnow() +
+                         dateutil.relativedelta.relativedelta(
+                             weekday=WEEKDAYS[self.day], hour=self.time.hour,
+                             minute=self.time.minute, second=0,
+                             microsecond=0))
+            if next_date.isocalendar()[1] % 2:
+                ## ISO week is odd
+                if self.freq == 'biweekly-odd':
+                    return (next_date)
+            else:
+                if self.freq == 'biweekly-even':
+                    return (next_date)
+            # If week doesn't match rule, skip one week
+            return (next_date +
+                    dateutil.relativedelta.relativedelta(weeks=+1))
+        else:
+            raise ValueError("Invalid frequency: %s in %s" %
+                             (self.freq, self.filefrom))
+
+    def rrule(self):
+        if self.freq == "weekly":
+            return {'freq': 'weekly'}
+        elif self.freq == "biweekly-even" or self.freq == "biweekly-odd":
+            return {'freq': 'weekly', 'interval': 2}
 
 
 class Meeting(object):

@@ -10,10 +10,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import datetime
+import dateutil.relativedelta
 import unittest
 
 from yaml2ical import meeting
 from yaml2ical.tests import sample_data
+
+
+WEEKDAYS = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday',
+            4: 'Friday', 5: 'Saturday', 6: 'Sunday'}
 
 
 class MeetingTestCase(unittest.TestCase):
@@ -89,3 +95,41 @@ class MeetingTestCase(unittest.TestCase):
         self.should_not_conflict(
             sample_data.CONFLICTING_WEEKLY_MEETING,
             sample_data.MEETING_WITH_DURATION)
+
+    def test_next_weekly(self):
+        m = meeting.load_meetings(sample_data.WEEKLY_MEETING)[0]
+        # Set up the test date for tomorrow at 1200
+        test_date = (datetime.datetime.utcnow() +
+                     dateutil.relativedelta.relativedelta(
+                         days=+1, hour=12, minute=0, second=0, microsecond=0))
+        # force the meeting to tomorrow
+        m.schedules[0].day = WEEKDAYS[test_date.weekday()]
+        self.assertEqual(test_date, m.schedules[0].next_occurrence())
+
+    def test_next_biweekly_even(self):
+        m = meeting.load_meetings(sample_data.BIWEEKLY_EVEN_MEETING)[0]
+        # Set up the test date for tomorrow at 2200
+        test_date = (datetime.datetime.utcnow() +
+                     dateutil.relativedelta.relativedelta(
+                         days=+1, hour=22, minute=0, second=0, microsecond=0))
+        # If we are in an odd week, move out the meeting
+        if test_date.isocalendar()[1] % 2:
+            test_date = (test_date +
+                         dateutil.relativedelta.relativedelta(weeks=+1))
+        # force the meeting to tomorrow
+        m.schedules[0].day = WEEKDAYS[test_date.weekday()]
+        self.assertEqual(test_date, m.schedules[0].next_occurrence())
+
+    def test_next_biweekly_odd(self):
+        m = meeting.load_meetings(sample_data.BIWEEKLY_ODD_MEETING)[0]
+        # Set up the test date for tomorrow at 2200
+        test_date = (datetime.datetime.utcnow() +
+                     dateutil.relativedelta.relativedelta(
+                         days=+1, hour=22, minute=0, second=0, microsecond=0))
+        # If we are in an even week, move out the meeting
+        if not test_date.isocalendar()[1] % 2:
+            test_date = (test_date + dateutil.relativedelta.relativedelta(
+                         weeks=+1))
+        # force the meeting to tomorrow
+        m.schedules[0].day = WEEKDAYS[test_date.weekday()]
+        self.assertEqual(test_date, m.schedules[0].next_occurrence())
