@@ -63,6 +63,7 @@ class Yaml2IcalCalendar(icalendar.Calendar):
             event.add('description', ical_descript)
 
             # get starting date
+            # bex
             start_date = sch.start_date
             #next_meeting = sch.recurrence.next_occurrence(start_date, sch.day)
             next_meeting = sch.next_occurrence()
@@ -74,7 +75,7 @@ class Yaml2IcalCalendar(icalendar.Calendar):
                                                   tzinfo=pytz.utc)
             event.add('dtstart', next_meeting_date)
 
-            # add recurrence rule
+            # add recurrence rule bex
             event.add('rrule', sch.recurrence_rule())
 
             event.add('duration', datetime.timedelta(minutes=sch.duration))

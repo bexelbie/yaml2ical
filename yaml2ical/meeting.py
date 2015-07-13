@@ -21,7 +21,7 @@ import collections
 
 
 
-#from yaml2ical.recurrence import supported_recurrences
+#from yaml2ical.recurrence import supported_recurrences bex
 
 DATES = {
     'Monday': datetime.datetime(1900, 1, 1).date(),
@@ -103,7 +103,7 @@ class Schedule(object):
                  (other.meeting_start < self.meeting_end)) and
                 (set([self.freq, other.freq]) != alternating))
 
-    def next_occurrence(self):
+    def next_occurrence(self): # bex
         """Return the datetime of the next meeting.
 
         :returns: datetime object of the next meeting time
@@ -121,7 +121,7 @@ class Schedule(object):
                                  self.time.minute,
                                  tzinfo=pytz.utc)
 
-    def recurrence_rule(self):
+    def recurrence_rule(self): # bex
         return {'freq': 'weekly', 'interval': self.freq_interval}
 
 class Meeting(object):
@@ -208,7 +208,7 @@ def load_meetings(yaml_source):
 class MeetingConflictError(Exception):
     pass
 
-class MeetingInstance(object):
+class MeetingInstance(object): # bex
     """A meeting instance."""
 
     def __init__(self, project, start, duration):
@@ -222,7 +222,7 @@ def check_for_meeting_conflicts(meetings):
     :param meetings: list of Meeting objects
 
     """
-    # Get all recurrences for the next year
+    # Get all recurrences for the next year bex
     start = datetime.datetime.now(pytz.utc)
     end = start + datetime.timedelta(days=365)
 
